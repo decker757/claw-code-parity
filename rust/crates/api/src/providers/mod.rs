@@ -28,6 +28,7 @@ pub enum ProviderKind {
     Anthropic,
     Xai,
     OpenAi,
+    Ollama,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -133,7 +134,7 @@ pub fn resolve_model_alias(model: &str) -> String {
                     "grok-2" => "grok-2",
                     _ => trimmed,
                 },
-                ProviderKind::OpenAi => trimmed,
+                ProviderKind::OpenAi | ProviderKind::Ollama => trimmed,
             })
         })
         .map_or_else(|| trimmed.to_string(), ToOwned::to_owned)
@@ -158,6 +159,21 @@ pub fn metadata_for_model(model: &str) -> Option<ProviderMetadata> {
             default_base_url: openai_compat::DEFAULT_XAI_BASE_URL,
         });
     }
+    const OLLAMA_PREFIXES: &[&str] = &[
+        "llama", "mistral", "phi", "gemma", "qwen", "deepseek", "codellama", "vicuna", "orca",
+        "falcon", "mixtral", "dolphin", "solar", "yi",
+    ];
+    if OLLAMA_PREFIXES
+        .iter()
+        .any(|prefix| canonical.starts_with(prefix))
+    {
+        return Some(ProviderMetadata {
+            provider: ProviderKind::Ollama,
+            auth_env: "OLLAMA_API_KEY",
+            base_url_env: "OLLAMA_BASE_URL",
+            default_base_url: openai_compat::DEFAULT_OLLAMA_BASE_URL,
+        });
+    }
     None
 }
 
@@ -174,6 +190,11 @@ pub fn detect_provider_kind(model: &str) -> ProviderKind {
     }
     if openai_compat::has_api_key("XAI_API_KEY") {
         return ProviderKind::Xai;
+    }
+    if openai_compat::has_api_key("OLLAMA_HOST")
+        || openai_compat::has_api_key("OLLAMA_BASE_URL")
+    {
+        return ProviderKind::Ollama;
     }
     ProviderKind::Anthropic
 }

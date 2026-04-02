@@ -25,6 +25,7 @@ pub enum ProviderClient {
     Anthropic(AnthropicClient),
     Xai(OpenAiCompatClient),
     OpenAi(OpenAiCompatClient),
+    Ollama(OpenAiCompatClient),
 }
 
 impl ProviderClient {
@@ -48,6 +49,9 @@ impl ProviderClient {
             ProviderKind::OpenAi => Ok(Self::OpenAi(OpenAiCompatClient::from_env(
                 OpenAiCompatConfig::openai(),
             )?)),
+            ProviderKind::Ollama => Ok(Self::Ollama(OpenAiCompatClient::from_env(
+                OpenAiCompatConfig::ollama(),
+            )?)),
         }
     }
 
@@ -57,6 +61,7 @@ impl ProviderClient {
             Self::Anthropic(_) => ProviderKind::Anthropic,
             Self::Xai(_) => ProviderKind::Xai,
             Self::OpenAi(_) => ProviderKind::OpenAi,
+            Self::Ollama(_) => ProviderKind::Ollama,
         }
     }
 
@@ -72,7 +77,7 @@ impl ProviderClient {
     pub fn prompt_cache_stats(&self) -> Option<PromptCacheStats> {
         match self {
             Self::Anthropic(client) => client.prompt_cache_stats(),
-            Self::Xai(_) | Self::OpenAi(_) => None,
+            Self::Xai(_) | Self::OpenAi(_) | Self::Ollama(_) => None,
         }
     }
 
@@ -80,7 +85,7 @@ impl ProviderClient {
     pub fn take_last_prompt_cache_record(&self) -> Option<PromptCacheRecord> {
         match self {
             Self::Anthropic(client) => client.take_last_prompt_cache_record(),
-            Self::Xai(_) | Self::OpenAi(_) => None,
+            Self::Xai(_) | Self::OpenAi(_) | Self::Ollama(_) => None,
         }
     }
 
@@ -90,7 +95,9 @@ impl ProviderClient {
     ) -> Result<MessageResponse, ApiError> {
         match self {
             Self::Anthropic(client) => send_via_provider(client, request).await,
-            Self::Xai(client) | Self::OpenAi(client) => send_via_provider(client, request).await,
+            Self::Xai(client) | Self::OpenAi(client) | Self::Ollama(client) => {
+                send_via_provider(client, request).await
+            }
         }
     }
 
@@ -102,9 +109,11 @@ impl ProviderClient {
             Self::Anthropic(client) => stream_via_provider(client, request)
                 .await
                 .map(MessageStream::Anthropic),
-            Self::Xai(client) | Self::OpenAi(client) => stream_via_provider(client, request)
-                .await
-                .map(MessageStream::OpenAiCompat),
+            Self::Xai(client) | Self::OpenAi(client) | Self::Ollama(client) => {
+                stream_via_provider(client, request)
+                    .await
+                    .map(MessageStream::OpenAiCompat)
+            }
         }
     }
 }
@@ -143,6 +152,11 @@ pub fn read_base_url() -> String {
 #[must_use]
 pub fn read_xai_base_url() -> String {
     openai_compat::read_base_url(OpenAiCompatConfig::xai())
+}
+
+#[must_use]
+pub fn read_ollama_base_url() -> String {
+    openai_compat::read_base_url(OpenAiCompatConfig::ollama())
 }
 
 #[cfg(test)]
