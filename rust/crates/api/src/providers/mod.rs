@@ -161,7 +161,7 @@ pub fn metadata_for_model(model: &str) -> Option<ProviderMetadata> {
     }
     const OLLAMA_PREFIXES: &[&str] = &[
         "llama", "mistral", "phi", "gemma", "qwen", "deepseek", "codellama", "vicuna", "orca",
-        "falcon", "mixtral", "dolphin", "solar", "yi",
+        "falcon", "mixtral", "dolphin", "solar", "yi", "ollama",
     ];
     if OLLAMA_PREFIXES
         .iter()
